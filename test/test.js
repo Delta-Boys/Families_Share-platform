@@ -206,7 +206,8 @@ const initializeDB = async () => {
   }
   await chai.request(server).post(`/api/users/${user.user_id}/children`).send(child).set('Authorization', user.token)
 }
-describe('Test', () => {
+describe('Test', function () {
+  this.timeout(50000)
   before('Initializing DB', async () => {
     await initializeDB()
   })
