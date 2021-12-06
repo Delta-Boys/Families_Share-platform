@@ -1,0 +1,100 @@
+openapi: 3.0.3
+info:
+  title: FamiliesShare API
+  description: FamiliesShare API
+  version: 1.0.0
+servers:
+  - url: 'https'
+
+paths:
+  /user:
+    post:
+      tags:
+        - User
+      summary: Create a new user
+      operationId: createUser
+      requestBody:
+        $ref: '#/components/requestBodies/User'
+
+      responses:
+        '200':
+          $ref: '#/components/responses/User'
+        '400':
+          description: Bad request
+        '409':
+          description: User already exists
+
+  /user/authenticate/email:
+    post:
+      tags:
+        - User
+      summary: Authenticate a user by email
+      operationId: authenticateUserByEmail
+      requestBody:
+        $ref: '#/components/requestBodies/User'
+
+      responses:
+        '200':
+          $ref: '#/components/responses/User'
+        '400':
+          description: Bad request
+        '404':
+          description: User not found
+
+
+components:
+  requestBodies:
+    User:
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              given_name:
+                type: string
+              family_name:
+                type: string
+              number:
+                type: string
+                format: phone
+              email:
+                type: string
+                format: email
+              password:
+                type: string
+                format: password
+              visible:
+                type: boolean
+              language:
+                type: string
+              deviceToken:
+                type: string
+
+  responses:
+    User:
+      description: User response
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+              email:
+                type: string
+                format: email
+              name:
+                type: string
+              image:
+                type: string
+                format: url
+              token:
+                type: string
+                format: token
+
+
+
+
+
+
+
