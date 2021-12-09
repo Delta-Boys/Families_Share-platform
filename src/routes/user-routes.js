@@ -79,6 +79,9 @@ const Password_Reset = require('../models/password-reset')
 const Device = require('../models/device')
 const Rating = require('../models/rating')
 const Community = require('../models/community')
+const Invite = require('../models/invite')
+const Timeslot = require('../models/timeslot')
+const Activity = require('../models/activity')
 
 router.post('/', async (req, res, next) => {
   const {
@@ -439,6 +442,75 @@ router.post('/changepassword', async (req, res, next) => {
   } catch (error) {
     next(error)
   }
+})
+
+router.post('/invites', async (req, res, next) => {
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  const { timeslot_id, invitees } = req.body
+  const user_id = req.user_id
+
+  const timeslot = await Timeslot.findOne({ timeslot_id })
+  const activity = await Activity.findOne({ activity_id: timeslot.activity_id })
+  const inviter = await Member.findOne({ user_id: user_id, group_id: activity.group_id })
+
+  // controllo se l'invitante è nel gruppo dell'attività
+  if (inviter.group_id !== activity.group_id) {
+    return res.status(401).send('Not authorized')
+  }
+
+  invitees.map(async invitee_id => {
+    const invitee = await Member.findOne({ user_id: invitee_id, group_id: activity.group_id })
+
+    // controllo se l'invitato è nel gruppo dell'attività
+    if (invitee.group_id !== activity.group_id) {
+      return res.status(401).send('Not authorized')
+    }
+
+    await new Invite({
+      inviter_id: user_id,
+      timeslot_id: timeslot_id,
+      invitee_id: invitee,
+      status: 'pending'
+    }).save()
+  })
+})
+
+router.post("/invites/:invite_id/accept", async(req, res, next) => {
+  // dato un utente accetta un invito
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+
+  const { invite_id } = req.params
+  const invite = await Invite.findOne({ invite_id })
+
+  if (!invite) {
+    return res.status(404).send('Not found')
+  }
+
+  if (invite.invitee_id !== req.user_id) {
+    return res.status(401).send('Not authorized')
+  }
+
+  if (invite.status !== 'pending') {
+    return res.status(400).send('Bad Request')
+  }
+
+  invite.status = 'accepted'
+  await invite.save()
+
+  res.json(invite)
+})
+
+router.delete('/invites/:timeslotId', async (req, res, next) => {
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  Invite.deleteOne({ timeslot_id: req.params.timeslotId, invitee_id: req.user_id }).then(invite => {
+    res.json(invite)
+  }).catch(next)
 })
 
 router.get('/:id', (req, res, next) => {

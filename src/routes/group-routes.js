@@ -101,6 +101,7 @@ const Profile = require('../models/profile')
 const Community = require('../models/community')
 const User = require('../models/user')
 const { auth } = require('google-auth-library')
+const Invite = require('../models/invite')
 
 router.get('/', (req, res, next) => {
   if (!req.user_id) return res.status(401).send('Not authenticated')
@@ -1675,6 +1676,24 @@ router.delete(
     }
   }
 )
+
+router.get('/:group_id/invites/pending', async (req, res, next) => {
+  // dato un utente lista inviti pendenti
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  // recupero gli inviti dei figli
+  const parents = await Parent.find({ parent_id: req.user_id })
+  const children = parents.map(parent => parent.child_id)
+  const invites = await Invite.find({
+    $or: [
+      { invitee_id: { $in: children } },
+      { invitee_id: req.user_id }
+    ]
+  })
+  res.status(200).send(invites)
+})
+
 router.get('/:id/announcements', (req, res, next) => {
   if (!req.user_id) {
     return res.status(401).send('Not authenticated')
