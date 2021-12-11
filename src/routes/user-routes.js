@@ -484,7 +484,7 @@ router.post("/invites/:invite_id/accept", async(req, res, next) => {
   }
 
   const { invite_id } = req.params
-  const invite = await Invite.findOne({ invite_id })
+  const invite = await Invite.findById({ invite_id }).exec()
 
   if (!invite) {
     return res.status(404).send('Not found')

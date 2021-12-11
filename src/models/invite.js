@@ -1,12 +1,6 @@
 const mongoose = require('mongoose')
 
 const inviteSchema = new mongoose.Schema({
-  invite_id: {
-    type: String,
-    required: true,
-    unique: true
-  },
-
   timeslot_id: {
     type: String,
     required: true
