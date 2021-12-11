@@ -451,28 +451,29 @@ router.post('/invites', async (req, res, next) => {
   const { timeslot_id, invitees } = req.body
   const user_id = req.user_id
 
-  const timeslot = await Timeslot.findOne({ timeslot_id })
-  const activity = await Activity.findOne({ activity_id: timeslot.activity_id })
-  const inviter = await Member.findOne({ user_id: user_id, group_id: activity.group_id })
-
+  const timeslot = await Timeslot.findOne({ timeslot_id }).exec()
+  const activity = await Activity.findOne({ activity_id: timeslot.activity_id }).exec()
+  const inviter = await Member.findOne({ user_id: user_id, group_id: activity.group_id }).exec()
   // controllo se l'invitante è nel gruppo dell'attività
   if (inviter.group_id !== activity.group_id) {
     return res.status(401).send('Not authorized')
   }
 
   invitees.map(async invitee_id => {
-    const invitee = await Member.findOne({ user_id: invitee_id, group_id: activity.group_id })
+    const invitee = await Member.findOne({ user_id: invitee_id, group_id: activity.group_id }).exec()
 
     // controllo se l'invitato è nel gruppo dell'attività
     if (invitee.group_id !== activity.group_id) {
       return res.status(401).send('Not authorized')
     }
 
+    // controllo se l'invitato è già invitato allo stesso evento
+    const invites = await Invite.find({timeslot_id: timeslot.id, invitee_id: invitee_id }).exec()
     await new Invite({
       inviter_id: user_id,
-      timeslot_id: timeslot_id,
-      invitee_id: invitee,
-      status: 'pending'
+      timeslot_id: timeslot.id,
+      invitee_id: invitee_id,
+      status: invites.length > 0 ? 'already invited' : 'pending'
     }).save()
   })
 })
