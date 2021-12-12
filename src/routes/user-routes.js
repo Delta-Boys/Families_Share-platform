@@ -478,7 +478,7 @@ router.post('/invites', async (req, res, next) => {
   })
 })
 
-router.post("/invites/:invite_id/accept", async(req, res, next) => {
+router.post('/invites/:invite_id/accept', async (req, res, next) => {
   // dato un utente accetta un invito
   if (!req.user_id) {
     return res.status(401).send('Not authenticated')
@@ -491,7 +491,13 @@ router.post("/invites/:invite_id/accept", async(req, res, next) => {
     return res.status(404).send('Not found')
   }
 
-  if (invite.invitee_id !== req.user_id) {
+  const children = await Parent.find({ parent_id: req.user_id }).exec()
+  const timeslot = await Timeslot.findOne({ timeslot_id: invite.timeslot_id }).exec()
+  const activity = await Activity.findOne({ activity_id: timeslot.activity_id }).exec()
+  const group = await Group.findOne({ group_id: activity.group_id }).exec()
+
+  // controllo se l'utente è genitore di uno degli invitati
+  if (!(invite.invitee_id === req.user_id || children.some(child => child.child_id === invite.invitee_id))) {
     return res.status(401).send('Not authorized')
   }
 
@@ -500,9 +506,33 @@ router.post("/invites/:invite_id/accept", async(req, res, next) => {
   }
 
   invite.status = 'accepted'
-  await invite.save()
+  const invite_promise =  invite.save()
 
-  res.json(invite)
+
+  // se l'invito è stato accettato, modifico l'evento nel calendario
+  const event = await calendar.events.get({
+    calendarId: group.calendar_id,
+    eventId: req.params.timeslotId
+  })
+
+  const participants = invite.invitee_id === req.user_id ?
+      {parents: JSON.parse(event.data.extendedProperties.shared.parents).push(invite.invitee_id)} :
+      {children: JSON.parse(event.data.extendedProperties.shared.children).push(invite.invitee_id)}
+
+  await calendar.events.patch({
+    calendarId: group.calendar_id,
+    eventId: req.params.timeslotId,
+    resource: {
+      extendedProperties: {
+        shared: {
+          participants
+        },
+      }
+    }
+  })
+
+  await invite_promise
+  res.status(200).send('Invite accepted')
 })
 
 router.delete('/invites/:timeslotId', async (req, res, next) => {
