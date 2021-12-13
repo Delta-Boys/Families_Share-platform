@@ -1677,20 +1677,34 @@ router.delete(
   }
 )
 
-router.get('/:group_id/invites/pending', async (req, res, next) => {
+router.get('/invites', async (req, res, next) => {
+
+  const { status, groupId } = req.query
   // dato un utente lista inviti pendenti
   if (!req.user_id) {
     return res.status(401).send('Not authenticated')
   }
   // recupero gli inviti dei figli
-  const parents = await Parent.find({ parent_id: req.user_id })
-  const children = parents.map(parent => parent.child_id)
+  const children = Parent.find({ parent_id: req.user_id }).map(async child => {
+    //controllo se è nel gruppo
+    const isMember = await Member.findOne({user_id: child.child_id, group_id: groupId}).exec()
+    if(isMember)
+      return child.child_id
+    })
+
   const invites = await Invite.find({
-    $or: [
-      { invitee_id: { $in: children } },
-      { invitee_id: req.user_id }
-    ]
-  })
+    $and: [
+        {status: status},
+      {
+
+        $or: [
+        { invitee_id: { $in: children } },
+        { invitee_id: req.user_id }
+          ]
+      }
+  ]
+  }).exec()
+
   res.status(200).send(invites)
 })
 
