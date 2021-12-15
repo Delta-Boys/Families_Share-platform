@@ -221,6 +221,7 @@ describe('Test', function () {
   importTest('Group Members Endpoints Test', './Groups/memberEndpoints')
   importTest('Group Various Endpoints Test', './Groups/variousEndpoints')
   importTest('Group Activity Endpoints Test', './Groups/activityEndpoints')
+  importTest('Activity Request Endpoints Test', './Groups/activityRequestEndpoints')
   importTest('Group Announcement Endpoints Test', './Groups/announcementEndpoints')
   importTest('User Various Endpoints Test', './Users/variousEndpoints')
   importTest('Child Endpoints Test', './Children/childEndpoints')
