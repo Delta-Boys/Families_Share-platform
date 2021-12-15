@@ -4,10 +4,10 @@
 name: Integration Tests
 
 on:
-  push:
-    branches: [ master ]
   pull_request:
-    branches: [ master ]
+    paths:
+      - 'src/**'
+
 
 jobs:
   run_tests:

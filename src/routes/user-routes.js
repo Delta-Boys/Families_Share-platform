@@ -79,6 +79,9 @@ const Password_Reset = require('../models/password-reset')
 const Device = require('../models/device')
 const Rating = require('../models/rating')
 const Community = require('../models/community')
+const Invite = require('../models/invite')
+const Timeslot = require('../models/timeslot')
+const Activity = require('../models/activity')
 
 router.post('/', async (req, res, next) => {
   const {
@@ -439,6 +442,105 @@ router.post('/changepassword', async (req, res, next) => {
   } catch (error) {
     next(error)
   }
+})
+
+router.get('/invites', async (req, res, next) => {
+  const { status } = req.query
+  // dato un utente lista inviti pendenti
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  // recupero gli inviti dei figli
+  const children = await Parent.find({ parent_id: req.user_id })
+    .then(parents => parents.map(p => p.child_id))
+
+  const invites = await Invite.find({
+    status,
+    invitee_id: { $in: children.concat([req.user_id]) }
+  }).exec()
+
+  res.status(200).json(invites)
+})
+
+router.post('/invites/:timeslot_id/accept', async (req, res, next) => {
+  // dato un utente accetta un invito
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+
+  const usersChildren = await Parent.find({ parent_id: req.user_id }).exec()
+  const possibleInvitees = usersChildren.map(child => child.child_id).concat([req.user_id])
+  const { timeslot_id } = req.params
+  const invites = await Invite.find({ timeslot_id, invitee_id: { $in: possibleInvitees } }).exec()
+
+  if (invites.length === 0) {
+    return res.status(404).send('Not found')
+  }
+
+  const { group_id } = invites[0]
+  const group = await Group.findOne({ group_id }).exec()
+  const invitees = invites.map(invite => invite.invitee_id)
+
+  // controllo se l'utente è genitore di uno degli invitati
+  if (!invitees.every(inv => possibleInvitees.includes(inv))) {
+    return res.status(401).send('Not authorized')
+  }
+
+  if (!invites.every(invite => invite.status === 'pending')) {
+    return res.status(400).send('Bad Request')
+  }
+
+
+  // get timeslot
+  const timeslot = await calendar.events.get({
+    calendarId: group.calendar_id,
+    eventId: timeslot_id
+  }).then(response => response.data)
+
+  // add invitees
+  var { children, parents } = timeslot.extendedProperties.shared
+  if (invitees.includes(req.user_id)) {
+    parents = JSON.parse(parents)
+    parents.push(req.user_id)
+    parents = [...new Set(parents)]
+    parents = JSON.stringify(parents)
+  }
+  children = JSON.parse(children)
+  children = children.concat(invitees.filter(inv => inv !== req.user_id))
+  children = [...new Set(children)]
+  children = JSON.stringify(children)
+
+
+  await calendar.events.patch({
+    calendarId: group.calendar_id,
+    eventId: timeslot_id,
+    resource: {
+      extendedProperties: {
+        ...(timeslot.extendedProperties),
+        shared: {
+          ...(timeslot.extendedProperties.shared),
+          parents,
+          children
+        },
+      }
+    }
+  })
+
+  await Invite.deleteMany({ invitee_id: { $in: possibleInvitees }, timeslot_id: timeslot_id })
+  res.status(200).send('Invite accepted')
+})
+
+router.post('/invites/:timeslot_id/decline', async (req, res, next) => {
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+
+  const usersChildren = await Parent.find({ parent_id: req.user_id }).exec()
+  const possibleInvitees = usersChildren.map(child => child.child_id).concat([req.user_id])
+  const { timeslot_id } = req.params
+  await Invite.deleteMany({ timeslot_id, invitee_id: { $in: possibleInvitees } }).exec()
+
+  res.status(200).send()
 })
 
 router.get('/:id', (req, res, next) => {
