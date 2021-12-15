@@ -3,7 +3,7 @@ const User = require('../../src/models/user')
 const Group = require('../../src/models/group')
 const Child = require('../../src/models/child')
 const ActivityRequest = require('../../src/models/activityRequest')
-const {child} = require("supervisor");
+const { child } = require('supervisor')
 
 const { server } = common
 const { chai } = common
@@ -152,3 +152,5 @@ describe('/Delete/api/groups/groupId/activityrequests/activityReqId', () => {
     } catch (err) {
       throw err
     }
+  })
+})
