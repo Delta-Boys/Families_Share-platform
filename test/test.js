@@ -221,12 +221,12 @@ describe('Test', function () {
   importTest('Group Members Endpoints Test', './Groups/memberEndpoints')
   importTest('Group Various Endpoints Test', './Groups/variousEndpoints')
   importTest('Group Various Endpoints Test', './Groups/activityEndpoints')
+  importTest('Activity Request Endpoints Test', './Groups/activityRequestEndpoints')
   importTest('Group Announcement Endpoints Test', './Groups/announcementEndpoints')
   importTest('User Various Endpoints Test', './Users/variousEndpoints')
   importTest('Child Endpoints Test', './Children/childEndpoints')
   importTest('Profile Endpoints Test', './Profiles/profileEndpoints')
   importTest('Community Endpoints Test', './Community/communityEndpoints')
-
   after('Cleaning up', async () => {
     await User.deleteMany({})
     await Profile.deleteMany({})
