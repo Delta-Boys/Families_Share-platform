@@ -39,6 +39,10 @@ const activitySchema = new mongoose.Schema({
   status: {
     type: String,
     required: true
+  },
+  greenpass_required: {
+    type: Boolean,
+    required: true
   }
 }, { timestamps: true, toJSON: { virtuals: true } })
 
