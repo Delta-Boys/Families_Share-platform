@@ -2,7 +2,7 @@ const common = require('../common')
 const User = require('../../src/models/user')
 const Group = require('../../src/models/group')
 const Child = require('../../src/models/child')
-const ActivityRequest = require('../../src/models/activityRequest')
+const ActivityRequest = require('../../src/models/activity-request')
 const { child } = require('supervisor')
 
 const { server } = common
