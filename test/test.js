@@ -220,12 +220,13 @@ describe('Test', function () {
   importTest('Users Children Endpoints Test', './Users/childrenEndpoints')
   importTest('Group Members Endpoints Test', './Groups/memberEndpoints')
   importTest('Group Various Endpoints Test', './Groups/variousEndpoints')
-  importTest('Group Various Endpoints Test', './Groups/activityEndpoints')
+  importTest('Group Activity Endpoints Test', './Groups/activityEndpoints')
   importTest('Group Announcement Endpoints Test', './Groups/announcementEndpoints')
   importTest('User Various Endpoints Test', './Users/variousEndpoints')
   importTest('Child Endpoints Test', './Children/childEndpoints')
   importTest('Profile Endpoints Test', './Profiles/profileEndpoints')
   importTest('Community Endpoints Test', './Community/communityEndpoints')
+  importTest('Timeslot Invites Test', './Users/invitesEndpoints')
 
   after('Cleaning up', async () => {
     await User.deleteMany({})

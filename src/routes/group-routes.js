@@ -101,6 +101,7 @@ const Profile = require('../models/profile')
 const Community = require('../models/community')
 const User = require('../models/user')
 const { auth } = require('google-auth-library')
+const Invite = require('../models/invite')
 
 router.get('/', (req, res, next) => {
   if (!req.user_id) return res.status(401).send('Not authenticated')
@@ -1675,6 +1676,55 @@ router.delete(
     }
   }
 )
+
+router.post('/:groupId/activities/:activityId/timeslots/:timeslotId/invites', async (req, res, next) => {
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  const { groupId: group_id, activityId: activity_id, timeslotId: timeslot_id } = req.params
+  const { invitees } = req.body
+  const user_id = req.user_id
+
+  const member = await Member.exists({ user_id: user_id, group_id: group_id })
+  if (!member) {
+    return res.status(401).send('Not authorized')
+  }
+
+  const group = await Group.findOne({ group_id })
+  const eventResp = await calendar.events.get({
+    calendarId: group.calendar_id,
+    eventId: timeslot_id
+  })
+  if (!eventResp.data) {
+    return res.status(404).send('Timeslot does not exist')
+  }
+
+  const members = await Member.find({ group_id, user_accepted: true, group_accepted: true }).distinct('user_id')
+  const children = await Parent.find({ parent_id: { $in: members } }).distinct('child_id')
+
+  invitees.map(async invitee_id => {
+    if (!members.includes(invitee_id) && !children.includes(invitee_id)) {
+      return res.status(401).send('Not authorized')
+    }
+
+    // controllo se l'invitato è già invitato allo stesso evento
+    const invites = await Invite.find({ timeslot_id, invitee_id: invitee_id }).exec()
+    if (invites.filter(i => i.inviter_id === user_id).length === 0) {
+      // create new invite only if not already existing
+      await new Invite({
+        inviter_id: user_id,
+        timeslot_id,
+        invitee_id,
+        group_id,
+        activity_id,
+        status: invites.length > 0 ? 'already invited' : 'pending'
+      }).save()
+    }
+  })
+
+  res.status(200).send()
+})
+
 router.get('/:id/announcements', (req, res, next) => {
   if (!req.user_id) {
     return res.status(401).send('Not authenticated')
