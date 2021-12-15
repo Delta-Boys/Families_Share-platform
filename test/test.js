@@ -229,6 +229,8 @@ describe('Test', function () {
   importTest('Community Endpoints Test', './Community/communityEndpoints')
   importTest('Timeslot Invites Test', './Users/invitesEndpoints')
 
+  importTest('GreenPass Endpoints Test', './Groups/greenPassEndpoints')
+
   after('Cleaning up', async () => {
     await User.deleteMany({})
     await Profile.deleteMany({})
