@@ -1709,49 +1709,20 @@ router.post('/:groupId/activities/:activityId/timeslots/:timeslotId/invites', as
 
     // controllo se l'invitato è già invitato allo stesso evento
     const invites = await Invite.find({ timeslot_id, invitee_id: invitee_id }).exec()
-    if (!invites.filter(i => i.inviter_id === user_id)) {
+    if (invites.filter(i => i.inviter_id === user_id).length === 0) {
       // create new invite only if not already existing
       await new Invite({
         inviter_id: user_id,
-        timeslot_id: timeslot_id,
-        invitee_id: invitee_id,
+        timeslot_id,
+        invitee_id,
+        group_id,
+        activity_id,
         status: invites.length > 0 ? 'already invited' : 'pending'
       }).save()
     }
   })
 
   res.status(200).send()
-})
-
-router.get('/invites', async (req, res, next) => {
-
-  const { status, groupId } = req.query
-  // dato un utente lista inviti pendenti
-  if (!req.user_id) {
-    return res.status(401).send('Not authenticated')
-  }
-  // recupero gli inviti dei figli
-  const children = Parent.find({ parent_id: req.user_id }).map(async child => {
-    //controllo se è nel gruppo
-    const isMember = await Member.findOne({ user_id: child.child_id, group_id: groupId }).exec()
-    if (isMember)
-      return child.child_id
-  })
-
-  const invites = await Invite.find({
-    $and: [
-      { status: status },
-      {
-
-        $or: [
-          { invitee_id: { $in: children } },
-          { invitee_id: req.user_id }
-        ]
-      }
-    ]
-  }).exec()
-
-  res.status(200).send(invites)
 })
 
 router.get('/:id/announcements', (req, res, next) => {

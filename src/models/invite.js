@@ -13,6 +13,14 @@ const inviteSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  group_id: {
+    type: String,
+    required: true
+  },
+  activity_id: {
+    type: String,
+    required: true
+  },
   status: {
     type: String,
     required: true
