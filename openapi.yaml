@@ -8,6 +8,13 @@ servers:
 
 paths:
   /group/{groupId}/activityrequests:
+    parameters:
+      - in: path
+        name: groupId
+        description: Group ID
+        required: true
+        schema:
+          type: string
     post:
       tags:
         - Activity Requests
@@ -42,9 +49,21 @@ paths:
                 items:
                   $ref: '#/components/schemas/ActivityRequest'
 
-
-
   /group/{groupId}/activityrequests/{activityRequestId}:
+    parameters:
+      - in: path
+        name: groupId
+        description: Group ID
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: activityRequestId
+        description: Activity Request ID
+        required: true
+        schema:
+          type: string
+
     get:
       tags:
         - Activity Requests
@@ -95,6 +114,21 @@ paths:
 
 
   /group/{groupId}/activityrequests/{activityRequestId}/compatibleTimeslots:
+    parameters:
+      - in: path
+        name: groupId
+        description: Group ID
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: activityRequestId
+        description: Activity Request ID
+        required: true
+        schema:
+          type: string
+          
+
     get:
       tags:
         - Activity Requests
