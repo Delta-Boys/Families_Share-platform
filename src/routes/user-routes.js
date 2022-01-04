@@ -864,9 +864,9 @@ router.patch('/:id/profile', profileUpload.single('photo'), async (req, res, nex
   const user_id = req.params.id
   const { file } = req
   const {
-    given_name, family_name, email, phone, phone_type, visible, street, number, city, description, contact_option
+    given_name, family_name, email, phone, phone_type, visible, street, number, city, description, contact_option, status_text, status_expiration
   } = req.body
-  if (!(given_name || family_name || email || phone || phone_type || visible !== undefined || street || number || city || contact_option)) {
+  if (!(given_name || family_name || email || phone || phone_type || visible !== undefined || street || number || city || contact_option || status_text || status_expiration)) {
     return res.status(400).send('Bad Request')
   }
   const profilePatch = {
@@ -877,7 +877,9 @@ router.patch('/:id/profile', profileUpload.single('photo'), async (req, res, nex
     phone_type,
     description,
     visible,
-    contact_option
+    contact_option,
+    status_text,
+    status_expiration,
   }
   const addressPatch = {
     street,
