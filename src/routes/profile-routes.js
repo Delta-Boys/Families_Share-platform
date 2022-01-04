@@ -1,4 +1,5 @@
 const express = require('express')
+const moment = require('moment')
 const router = new express.Router()
 
 const Profile = require('../models/profile')
@@ -22,6 +23,11 @@ router.get('/', (req, res, next) => {
             return res.status(404).send('Profiles not found')
           }
           for (const profile of profiles) {
+            if (profile.status_expiration < moment().toISOString()) {
+              Profile.updateOne({_id: profile._id}, {status_expiration: undefined, status_text: undefined}).exec()
+              profile.status_expiration = undefined
+              profile.status_text = undefined
+            }
             if (profile.image === null) {
               Image.create({
                 owner_id: profile.user_id,
@@ -54,6 +60,11 @@ router.get('/', (req, res, next) => {
             return res.status(404).send('Profiles not found')
           }
           for (const profile of profiles) {
+            if (profile.status_expiration < moment().toISOString()) {
+              Profile.updateOne({_id: profile._id}, {status_expiration: undefined, status_text: undefined}).exec()
+              profile.status_expiration = undefined
+              profile.status_text = undefined
+            }
             if (profile.image === null) {
               Image.create({
                 owner_id: profile.user_id,

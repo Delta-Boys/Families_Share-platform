@@ -13,6 +13,7 @@ const rl = require('../helper-functions/request-link-email')
 const wt = require('../helper-functions/walthrough-email')
 const texts = require('../constants/notification-texts')
 const { google } = require('googleapis')
+const moment = require('moment')
 const scopes = 'https://www.googleapis.com/auth/calendar'
 const googleToken = new google.auth.GoogleAuth(
   {
@@ -854,6 +855,11 @@ router.get('/:id/profile', (req, res, next) => {
     .then(profile => {
       if (!profile) {
         return res.status(404).send('Profile not found')
+      }
+      if (profile.status_expiration < moment().toISOString()) {
+        Profile.updateOne({_id: profile._id}, {status_expiration: undefined, status_text: undefined}).exec()
+        profile.status_expiration = undefined
+        profile.status_text = undefined
       }
       res.json(profile)
     }).catch(next)
