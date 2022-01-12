@@ -861,6 +861,7 @@ router.get('/:id/profile', (req, res, next) => {
         profile.status_expiration = undefined
         profile.status_text = undefined
       }
+      profile.status_text = profile.status_text || "available"
       res.json(profile)
     }).catch(next)
 })

@@ -24,10 +24,11 @@ router.get('/', (req, res, next) => {
           }
           for (const profile of profiles) {
             if (profile.status_expiration < moment().toISOString()) {
-              Profile.updateOne({_id: profile._id}, {status_expiration: undefined, status_text: undefined}).exec()
+              Profile.updateOne({ _id: profile._id }, { status_expiration: undefined, status_text: undefined }).exec()
               profile.status_expiration = undefined
               profile.status_text = undefined
             }
+            profile.status_text = profile.status_text || "available"
             if (profile.image === null) {
               Image.create({
                 owner_id: profile.user_id,
@@ -61,10 +62,11 @@ router.get('/', (req, res, next) => {
           }
           for (const profile of profiles) {
             if (profile.status_expiration < moment().toISOString()) {
-              Profile.updateOne({_id: profile._id}, {status_expiration: undefined, status_text: undefined}).exec()
+              Profile.updateOne({ _id: profile._id }, { status_expiration: undefined, status_text: undefined }).exec()
               profile.status_expiration = undefined
               profile.status_text = undefined
             }
+            profile.status_text = profile.status_text || "available"
             if (profile.image === null) {
               Image.create({
                 owner_id: profile.user_id,
