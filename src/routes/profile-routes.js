@@ -23,7 +23,7 @@ router.get('/', (req, res, next) => {
             return res.status(404).send('Profiles not found')
           }
           for (const profile of profiles) {
-            if (profile.status_expiration < moment().toISOString()) {
+            if (profile.status_expiration && new Date(profile.status_expiration) < new Date()) {
               Profile.updateOne({ _id: profile._id }, { status_expiration: undefined, status_text: undefined }).exec()
               profile.status_expiration = undefined
               profile.status_text = undefined
@@ -61,7 +61,7 @@ router.get('/', (req, res, next) => {
             return res.status(404).send('Profiles not found')
           }
           for (const profile of profiles) {
-            if (profile.status_expiration < moment().toISOString()) {
+            if (profile.status_expiration && new Date(profile.status_expiration) < new Date()) {
               Profile.updateOne({ _id: profile._id }, { status_expiration: undefined, status_text: undefined }).exec()
               profile.status_expiration = undefined
               profile.status_text = undefined

@@ -856,7 +856,7 @@ router.get('/:id/profile', (req, res, next) => {
       if (!profile) {
         return res.status(404).send('Profile not found')
       }
-      if (profile.status_expiration < moment().toISOString()) {
+      if (profile.status_expiration && new Date(profile.status_expiration) < new Date()) {
         Profile.updateOne({_id: profile._id}, {status_expiration: undefined, status_text: undefined}).exec()
         profile.status_expiration = undefined
         profile.status_text = undefined
@@ -886,7 +886,7 @@ router.patch('/:id/profile', profileUpload.single('photo'), async (req, res, nex
     visible,
     contact_option,
     status_text,
-    status_expiration,
+    status_expiration: status_expiration === 'null' ? null : status_expiration,
   }
   const addressPatch = {
     street,
