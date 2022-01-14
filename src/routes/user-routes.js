@@ -13,6 +13,7 @@ const rl = require('../helper-functions/request-link-email')
 const wt = require('../helper-functions/walthrough-email')
 const texts = require('../constants/notification-texts')
 const { google } = require('googleapis')
+const moment = require('moment')
 const scopes = 'https://www.googleapis.com/auth/calendar'
 const googleToken = new google.auth.GoogleAuth(
   {
@@ -855,6 +856,12 @@ router.get('/:id/profile', (req, res, next) => {
       if (!profile) {
         return res.status(404).send('Profile not found')
       }
+      if (profile.status_expiration && new Date(profile.status_expiration) < new Date()) {
+        Profile.updateOne({_id: profile._id}, {status_expiration: undefined, status_text: undefined}).exec()
+        profile.status_expiration = undefined
+        profile.status_text = undefined
+      }
+      profile.status_text = profile.status_text || "available"
       res.json(profile)
     }).catch(next)
 })
@@ -864,9 +871,9 @@ router.patch('/:id/profile', profileUpload.single('photo'), async (req, res, nex
   const user_id = req.params.id
   const { file } = req
   const {
-    given_name, family_name, email, phone, phone_type, visible, street, number, city, description, contact_option
+    given_name, family_name, email, phone, phone_type, visible, street, number, city, description, contact_option, status_text, status_expiration
   } = req.body
-  if (!(given_name || family_name || email || phone || phone_type || visible !== undefined || street || number || city || contact_option)) {
+  if (!(given_name || family_name || email || phone || phone_type || visible !== undefined || street || number || city || contact_option || status_text || status_expiration)) {
     return res.status(400).send('Bad Request')
   }
   const profilePatch = {
@@ -877,7 +884,9 @@ router.patch('/:id/profile', profileUpload.single('photo'), async (req, res, nex
     phone_type,
     description,
     visible,
-    contact_option
+    contact_option,
+    status_text,
+    status_expiration: status_expiration === 'null' ? null : status_expiration,
   }
   const addressPatch = {
     street,
