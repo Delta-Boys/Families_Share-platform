@@ -114,7 +114,9 @@ describe('/Get/api/users/userId/children', () => {
         .get(`/api/users/${user.user_id}/children`)
         .set('Authorization', user.token)
         .end((err, res) => {
-          res.should.have.status(404)
+          res.should.have.status(200)
+          res.should.be.a('array')
+          res.body.should.have.lengthOf(0)
           done()
         })
     })
