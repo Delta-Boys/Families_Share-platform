@@ -42,7 +42,13 @@ const profileSchema = new mongoose.Schema(
     suspended: {
       type: Boolean,
       required: true
-    }
+    },
+    status_text: {
+      type: String,
+    },
+    status_expiration: {
+      type: Date,
+    },
   },
   { timestamps: true, toJSON: { virtuals: true } }
 )

@@ -2,6 +2,8 @@ const express = require('express')
 const router = new express.Router()
 const multer = require('multer')
 const objectid = require('objectid')
+const Ajv = require("ajv")
+const ajv = new Ajv()
 const fr = require('find-remove')
 const { google } = require('googleapis')
 const scopes = ['https://www.googleapis.com/auth/calendar']
@@ -47,10 +49,10 @@ const transporter = nodemailer.createTransport({
 })
 
 const groupStorage = multer.diskStorage({
-  destination (req, file, cb) {
+  destination(req, file, cb) {
     cb(null, path.join(__dirname, '../../images/groups'))
   },
-  filename (req, file, cb) {
+  filename(req, file, cb) {
     const fileName = `${req.params.id}-${Date.now()}.${file.mimetype.slice(
       file.mimetype.indexOf('/') + 1,
       file.mimetype.length
@@ -65,10 +67,10 @@ const groupUpload = multer({
 })
 
 const announcementStorage = multer.diskStorage({
-  destination (req, file, cb) {
+  destination(req, file, cb) {
     cb(null, path.join(__dirname, '../../images/announcements'))
   },
-  filename (req, file, cb) {
+  filename(req, file, cb) {
     if (req.params.announcement_id === undefined) {
       req.params.announcement_id = objectid()
     }
@@ -96,11 +98,13 @@ const Notification = require('../models/notification')
 const Announcement = require('../models/announcement')
 const Parent = require('../models/parent')
 const Activity = require('../models/activity')
+const ActivityRequest = require('../models/activity-request')
 const Child = require('../models/child')
 const Profile = require('../models/profile')
 const Community = require('../models/community')
 const User = require('../models/user')
 const { auth } = require('google-auth-library')
+const Invite = require('../models/invite')
 
 router.get('/', (req, res, next) => {
   if (!req.user_id) return res.status(401).send('Not authenticated')
@@ -901,9 +905,6 @@ router.get('/:groupId/plans', async (req, res, next) => {
       return res.status(401).send('Unauthorized')
     }
     const plans = await Plan.find({ group_id: groupId })
-    if (plans.length === 0) {
-      return res.status(404).send('Group has no ongoing plans')
-    }
     return res.json(plans)
   } catch (err) {
     next(err)
@@ -1151,7 +1152,7 @@ router.post('/:id/activities', async (req, res, next) => {
     if (member.admin) {
       await nh.newActivityNotification(group_id, user_id)
     }
-    res.json({ status: activity.status })
+    res.json({ status: activity.status, id: activity.activity_id })
   } catch (error) {
     next(error)
   }
@@ -1178,9 +1179,6 @@ router.get('/:id/activities', (req, res, next) => {
         .lean()
         .exec()
         .then(activities => {
-          if (activities.length === 0) {
-            return res.status(404).send('Group has no activities')
-          }
           res.json(activities)
         })
     })
@@ -1675,6 +1673,269 @@ router.delete(
     }
   }
 )
+
+router.post('/:id/activityrequests', async (req, res, next) => {
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  const user_id = req.user_id
+  const group_id = req.params.id
+  try {
+    const { activityReq } = req.body
+    const member = await Member.findOne({
+      group_id,
+      user_id,
+      group_accepted: true,
+      user_accepted: true
+    })
+    if (!(member && user_id === activityReq.creator_id && group_id === activityReq.group_id)) {
+      return res.status(401).send('Unauthorized')
+    }
+    if (!(activityReq && activityReq.children)) {
+      return res.status(400).send('Bad Request')
+    }
+
+    const usersChildren = await Parent.find({ parent_id: user_id }).distinct('child_id');
+    if (!activityReq.children.every(c => usersChildren.includes(c))) {
+      return res.status(401).send('Unauthorized')
+    }
+
+    await ActivityRequest.create(activityReq)
+
+    res.status(200).send()
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.get('/:id/activityrequests', async (req, res, next) => {
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  const group_id = req.params.id
+  const user_id = req.user_id
+  try {
+    const member = await Member.findOne({
+      group_id,
+      user_id,
+      group_accepted: true,
+      user_accepted: true
+    })
+    if (!member) {
+      return res.status(401).send('Unauthorized')
+    }
+    const actrequests = await ActivityRequest.find({ group_id })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec()
+
+    res.json(actrequests)
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.delete('/:groupId/activityrequests/:reqId', async (req, res, next) => {
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  const group_id = req.params.groupId
+  const user_id = req.user_id
+  const req_id = req.params.reqId
+  try {
+    const member = await Member.findOne({
+      group_id,
+      user_id,
+      group_accepted: true,
+      user_accepted: true
+    })
+    if (!member) {
+      return res.status(401).send('Unauthorized')
+    }
+
+    const activityRequest = await ActivityRequest.findById(req_id)
+    if (!(member.admin || user_id === activityRequest.creator_id)) {
+      return res.status(401).send('Unauthorized')
+    }
+
+    await ActivityRequest.deleteOne(activityRequest)
+
+    res.status(200).send('Activity Deleted')
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.get('/:groupId/activityrequests/:reqId', async (req, res, next) => {
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  const group_id = req.params.groupId
+  const user_id = req.user_id
+  const req_id = req.params.reqId
+  try {
+    const member = await Member.findOne({
+      group_id,
+      user_id,
+      group_accepted: true,
+      user_accepted: true
+    })
+    if (!member) {
+      return res.status(401).send('Unauthorized')
+    }
+
+    const activityRequest = await ActivityRequest.findById(req_id)
+
+    if (!activityRequest) {
+      return res.status(404).send('Activity request not found')
+    }
+
+    res.json(activityRequest)
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.patch('/:groupId/activityrequests/:reqId', async (req, res, next) => {
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  const group_id = req.params.groupId
+  const user_id = req.user_id
+  const req_id = req.params.reqId
+  try {
+    const member = await Member.findOne({
+      group_id,
+      user_id,
+      group_accepted: true,
+      user_accepted: true
+    })
+    if (!member) {
+      return res.status(403).send('Forbidden')
+    }
+
+    const activityRequest = await ActivityRequest.findById(req_id)
+    if (!(member.admin || user_id === activityRequest.creator_id)) {
+      return res.status(403).send('Forbidden')
+    }
+
+    const patch = req.body
+    const patchSchema = {
+      type: 'object',
+      properties: {
+        name: { type: 'string' },
+        description: { type: 'string' },
+        color: { type: 'string' },
+        children: {
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1
+        },
+        date: { type: 'string' },
+        startTime: { type: 'string' },
+        endTime: { type: 'string' }
+      },
+      additionalProperties: false
+    }
+
+    if (!ajv.validate(patchSchema, patch)) {
+      return res.status(400).send()
+    }
+
+    const update = await ActivityRequest.updateOne({ _id }, patch)
+
+    res.status(200).json(update.nModified)
+  } catch (error) {
+    next(error)
+  }
+})
+
+router.get('/:groupId/activityrequests/:reqId/compatibleTimeslots', async (req, res, next) => {
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  const group_id = req.params.groupId
+  const user_id = req.user_id
+  const req_id = req.params.reqId
+
+  const member = await Member.findOne({
+    group_id,
+    user_id,
+    group_accepted: true,
+    user_accepted: true
+  })
+  if (!member) {
+    return res.status(401).send('Unauthorized')
+  }
+
+  const activityRequest = await ActivityRequest.findById(req_id)
+  if (!activityRequest) {
+    return res.status(404).send('Activity request not found')
+  }
+  const dstart = new Date(activityRequest.date)
+  dstart.setHours(0, 0)
+  const dend = new Date(activityRequest.date)
+  dend.setHours(24, 0)
+
+  const group = await Group.findOne({ group_id })
+
+  const resp = await calendar.events.list({
+    calendarId: group.calendar_id,
+    timeMin: dstart,
+    timeMax: dend,
+  })
+
+  res.json(resp.data.items)
+})
+
+router.post('/:groupId/activities/:activityId/timeslots/:timeslotId/invites', async (req, res, next) => {
+  if (!req.user_id) {
+    return res.status(401).send('Not authenticated')
+  }
+  const { groupId: group_id, activityId: activity_id, timeslotId: timeslot_id } = req.params
+  const { invitees } = req.body
+  const user_id = req.user_id
+
+  const member = await Member.exists({ user_id: user_id, group_id: group_id })
+  if (!member) {
+    return res.status(401).send('Not authorized')
+  }
+
+  const group = await Group.findOne({ group_id })
+  const eventResp = await calendar.events.get({
+    calendarId: group.calendar_id,
+    eventId: timeslot_id
+  })
+  if (!eventResp.data) {
+    return res.status(404).send('Timeslot does not exist')
+  }
+
+  const members = await Member.find({ group_id, user_accepted: true, group_accepted: true }).distinct('user_id')
+  const children = await Parent.find({ parent_id: { $in: members } }).distinct('child_id')
+
+  invitees.map(async invitee_id => {
+    if (!members.includes(invitee_id) && !children.includes(invitee_id)) {
+      return res.status(401).send('Not authorized')
+    }
+
+    // controllo se l'invitato è già invitato allo stesso evento
+    const invites = await Invite.find({ timeslot_id, invitee_id: invitee_id }).exec()
+    if (invites.filter(i => i.inviter_id === user_id).length === 0) {
+      // create new invite only if not already existing
+      await new Invite({
+        inviter_id: user_id,
+        timeslot_id,
+        invitee_id,
+        group_id,
+        activity_id,
+        status: invites.length > 0 ? 'already invited' : 'pending'
+      }).save()
+    }
+  })
+
+  res.status(200).send()
+})
+
 router.get('/:id/announcements', (req, res, next) => {
   if (!req.user_id) {
     return res.status(401).send('Not authenticated')

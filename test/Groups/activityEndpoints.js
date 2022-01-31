@@ -440,7 +440,9 @@ describe('/Get/api/groups/id/activities', () => {
           .get(`/api/groups/${group.group_id}/activities`)
           .set('Authorization', user.token)
           .end((err, res) => {
-            res.should.have.status(404)
+            res.should.have.status(200)
+            res.should.be.a('array')
+            res.body.should.have.lengthOf(0)
             done()
           })
       })
